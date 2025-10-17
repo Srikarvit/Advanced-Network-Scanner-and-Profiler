@@ -13,6 +13,7 @@ Features:
 - CLI flags: --interactive, --cidr, --ports, --no-nmap, --no-vendor-api, --no-save, --fast
 """
 from __future__ import annotations
+import scapy.all as scapy
 import argparse
 import ipaddress
 import socket
@@ -24,17 +25,13 @@ import csv
 import json
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import List, Tuple, Optional
-
-# network libs
-import scapy.all as scapy
-
 # optional libs
 try:
     import requests
 except Exception:
     requests = None
 try:
-    import nmap  # python-nmap wrapper (requires nmap binary present)
+    import nmap  
 except Exception:
     nmap = None
 
@@ -48,7 +45,6 @@ TCP_TIMEOUT = 1.0
 BANNER_TIMEOUT = 1.5
 MAX_THREADS = 200
 
-# a tiny local OUI vendor map (useful when requests not available or API blocked).
 LOCAL_OUI = {
     "14:D4:24": "Dell / Realtek (likely laptop/PC)",
     "8C:DC:02": "Router/ISP ONT (common fiber ONT)",
@@ -57,7 +53,6 @@ LOCAL_OUI = {
     "E2:D9:34": "Virtual/unknown virtual adapter",
 }
 
-# router heuristics by hostname or mac prefixes sometimes found
 ROUTER_KEYWORDS = ("router", "gpon", "tp-link", "netgear", "linksys", "asus")
 
 # -----------------------
@@ -101,7 +96,6 @@ def auto_detect_network() -> Tuple[Optional[str], Optional[str]]:
             except Exception:
                 continue
     if candidates:
-        # fallback but avoid auto-scanning 169.254
         first_iface, first_addr, first_mask = candidates[0]
         if first_addr.startswith("169.254."):
             return None, first_addr
@@ -126,7 +120,6 @@ def safe_arp_scan(cidr: str, timeout: float = 2.0, verbose: bool = False) -> Lis
     except PermissionError:
         raise
     except Exception as exc:
-        # fallback srp
         print(f"[!] scapy.arping failed ({exc}); falling back to srp.")
         arp = scapy.ARP(pdst=str(net))
         ether = scapy.Ether(dst="ff:ff:ff:ff:ff:ff")
@@ -161,7 +154,6 @@ def mac_vendor_lookup(mac: str, use_api: bool = True) -> str:
                 return resp.text.strip()
         except Exception:
             pass
-    # last fallback: return prefix or Unknown
     return LOCAL_OUI.get(prefix, "Unknown")
 
 def label_device(ip: str, mac: str, hostname: str, my_ip: str, vendor_hint: str) -> str:
@@ -170,29 +162,24 @@ def label_device(ip: str, mac: str, hostname: str, my_ip: str, vendor_hint: str)
     vendor_l = vendor_hint.lower() if vendor_hint else ""
     mac_prefix = mac[:8]
 
-    # This PC
     if ip == my_ip:
         return "This PC"
 
-    # Router heuristics: hostname contains known keywords or vendor hints
     if any(k in hostname_l for k in ROUTER_KEYWORDS):
         return "Router"
     if any(k in vendor_l for k in ("router", "routerboard", "isp", "ont", "fiberhome", "zte", "huawei")):
         return "Router"
 
-    # Docker / VM heuristics (common vendor OUIs or hostnames)
     if mac_prefix in ("44:00:49",):
         return "VM / Docker Host"
     if "docker" in hostname_l or "vm" in hostname_l or "virtual" in hostname_l or "virtualbox" in hostname_l:
         return "VM / Docker Host"
 
-    # Mobile heuristics by hostname or vendor
     if "android" in hostname_l or "android" in vendor_l:
         return "Android Phone"
     if "iphone" in hostname_l or "ipad" in hostname_l or "apple" in vendor_l:
         return "Apple Device"
 
-    # Generic vendor-based assumptions
     if "realtek" in vendor_l or "intel" in vendor_l or "broadcom" in vendor_l:
         return "Laptop / Desktop"
     if "raspberry" in vendor_l:
@@ -320,7 +307,6 @@ def profile_hosts(hosts: List[dict], my_ip: str, ports: List[int], use_nmap: boo
         }
         print(f"[+] Profiling {ip} ({hostname}) -> {label}")
 
-        # try nmap if available
         if nmap_ok:
             nmres = nmap_scan_host(ip, ports=ports)
             if nmres:
@@ -329,9 +315,7 @@ def profile_hosts(hosts: List[dict], my_ip: str, ports: List[int], use_nmap: boo
                 results.append(entry)
                 continue
 
-        # fallback connect-scan + ttl os guess
         entry["open_ports"] = tcp_connect_scan(ip, ports, workers=workers)
-        # simple TTL heuristic (best-effort)
         try:
             pkt = scapy.IP(dst=ip)/scapy.ICMP()
             resp = scapy.sr1(pkt, timeout=1, verbose=False)
@@ -450,7 +434,6 @@ def main():
         if cidr.startswith(addr.rsplit(".",1)[0]):
             local_ip = addr
             break
-    # fallback: pick any non-loopback
     if not local_ip:
         for iface, addr, mask in list_ipv4_interfaces():
             local_ip = addr
@@ -460,12 +443,10 @@ def main():
     if os.name == "nt":
         print("[*] Tip: run PowerShell/CMD as Administrator for best ARP/TTL results.")
 
-    # vendor API allowed?
     use_vendor_api = (not args.no_vendor_api) and (requests is not None)
     if (not args.no_vendor_api) and (requests is None):
         print("[*] requests not installed; vendor API disabled automatically.")
 
-    # nmap decision
     use_nmap = (not args.no_nmap) and (nmap is not None) and nmap_available()
     if (not args.no_nmap) and (nmap is not None) and (not nmap_available()):
         print("[*] python-nmap present but nmap binary not available on PATH - nmap disabled.")
@@ -477,7 +458,6 @@ def main():
     else:
         print("[*] nmap not used; falling back to lightweight port scan.")
 
-    # ports parse
     ports = COMMON_PORTS
     if args.ports:
         try:
@@ -485,7 +465,6 @@ def main():
         except Exception:
             print("[!] Could not parse ports list; using default common ports.")
 
-    # ARP discovery
     try:
         hosts = safe_arp_scan(cidr, timeout=args.timeout, verbose=args.verbose)
     except PermissionError:
@@ -503,7 +482,6 @@ def main():
 
     results = profile_hosts(hosts, my_ip=local_ip, ports=ports, use_nmap=use_nmap, use_vendor_api=use_vendor_api, fast=args.fast)
 
-    # save
     if not args.no_save:
         ensure_results_dir()
         ts = now_ts()
@@ -524,3 +502,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
