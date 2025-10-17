@@ -2,9 +2,9 @@ Available IPv4 interfaces:
   [0] Ethernet - xxx.xxx.xxx.xxx (netmask 255.xxx.xxx.xxx)
   [1] Wi-Fi - xxx.xxx.xxx.xxx (netmask 255.xxx.xxx.xxx)
 Enter index of interface or CIDR (e.g., 192.168.1.0/24):
-192.168.1.0/24
+abc.xxx.xyz.yyy/24
 
-[+] ARP scanning 192.168.1.0/24...
+[+] ARP scanning abc.xxx.xyz.yyy/24...
 [+] Found 4 hosts. Starting profiling...
 
 IP               MAC                  Hostname             Label              OS                     OpenPorts
