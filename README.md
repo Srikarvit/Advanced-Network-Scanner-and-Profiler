@@ -30,7 +30,18 @@ All scan results are exported in structured **CSV** and **JSON** reports, making
 ---
 
 ## 🛠️ Installation
--Install dependencies in required.txt
+🔸 Step 1 – Clone the Repository
+    git clone https://github.com/Srikarvit/Advanced-Network-Scanner-and-Profiler.git
+    cd Advanced-Network-Scanner-and-Profiler
+
+🔸 Step 2 – Install Dependencies - pip install -r requirements.txt
+
+🔸 Step 3 – Run as Administrator
+
+Windows (PowerShell): python network_scanner.py
+Linux: sudo python3 network_scanner.py
+
+⚠️ Some features (ARP & OS detection) require administrative privileges.
 
 --- 
 
@@ -40,8 +51,40 @@ All scan results are exported in structured **CSV** and **JSON** reports, making
 - **Scan a specific CIDR** - python network_scanner.py --cidr 192.168.1.0/24
 - **Scan specific ports, faster mode, or disable nmap** - python network_scanner.py --cidr 192.168.1.0/24 --ports 22,80,443 --fast --no-nmap
 - **Anonymize MAC addresses for public outputs (if implemented)** - python network_scanner.py --interactive --mask-mac --anon-method mask
-
+- **To enable OS detection** - python network_scanner.py --os-detect --service-detect
+- **Export results** - python network_scanner.py --export results/
 --- 
+
+# 🧠 How It Works
+  ┌──────────────────────────────────────────┐
+  │     Automatic Network Discovery          │
+  │ (Finds Local Subnet via psutil/ipconfig) │
+  └──────────────────────────────────────────┘
+                  │
+                  ▼
+  ┌──────────────────────────────────────────┐
+  │        ARP / ICMP Host Scanning          │
+  │ (Discovers all live hosts on the subnet) │
+  └──────────────────────────────────────────┘
+                  │
+                  ▼
+  ┌──────────────────────────────────────────┐
+  │    OS & Service Fingerprinting (Nmap)    │
+  │ (Detects OS, Versions, and Open Ports)   │
+  └──────────────────────────────────────────┘
+                  │
+                  ▼
+┌──────────────────────────────────────────┐
+│        Device Classification             │
+│ (Router / IoT / VM / Workstation)        │
+└──────────────────────────────────────────┘
+                  │
+                  ▼
+┌──────────────────────────────────────────┐
+│       Export Results (.CSV / .JSON)      │
+└──────────────────────────────────────────┘
+
+---
 
 # 📁 Output Files
 All results are stored automatically in the results/ directory:
