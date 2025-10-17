@@ -37,6 +37,9 @@ All scan results are exported in structured **CSV** and **JSON** reports, making
 ## Usage
 - **In Automatic Mode** - python network_scanner.py
 - **Interactive Mode** - python network_scanner.py --interactive
+- **Scan a specific CIDR** - python network_scanner.py --cidr 192.168.1.0/24
+- **Scan specific ports, faster mode, or disable nmap** - python network_scanner.py --cidr 192.168.1.0/24 --ports 22,80,443 --fast --no-nmap
+- **Anonymize MAC addresses for public outputs (if implemented)** - python network_scanner.py --interactive --mask-mac --anon-method mask
 
 --- 
 
@@ -52,7 +55,7 @@ File Type	Example File	Description
 Category	          Tools / Libraries
 Language	          Python 3.x
 Networking	        Scapy, psutil
-Service Detection	  Nmap, python-nmap
+Service Detection	  Nmap (optional), python-nmap
 Data Handling	      csv, json, ipaddress, socket
 Platforms	          Windows, Linux, macOS
 
