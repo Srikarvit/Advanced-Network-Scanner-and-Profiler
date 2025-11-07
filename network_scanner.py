@@ -111,31 +111,84 @@ def auto_detect_network() -> Tuple[Optional[str], Optional[str]]:
 # ARP discovery (safe)
 # -----------------------
 def safe_arp_scan(cidr: str, timeout: float = 2.0, verbose: bool = False) -> List[dict]:
+    """
+    Perform a safe ARP scan for a /24 (refuse larger by default).
+    Returns list of dicts: {"ip":..., "mac":..., "hostname":...}
+    This version is defensive and will not crash on unexpected scapy results.
+    """
     net = ipaddress.IPv4Network(cidr, strict=False)
     if net.prefixlen < 24:
         raise ValueError("Refusing to ARP-scan networks larger than /24 automatically. Provide a /24 or smaller with --cidr.")
     print(f"[+] ARP scanning {cidr} (timeout={timeout}s)...")
+    answered = []
     try:
-        answered, unanswered = scapy.arping(str(net), timeout=timeout, verbose=verbose)
+        # arping returns an Answered/Unanswered pair OR a list-like; handle both
+        res = scapy.arping(str(net), timeout=timeout, verbose=verbose)
+        # scapy.arping usually returns (answered, unanswered)
+        if isinstance(res, tuple) and len(res) >= 1:
+            answered = res[0]
+        else:
+            # fallback: maybe arping returned a single list/object
+            answered = res
     except PermissionError:
         raise
     except Exception as exc:
-        print(f"[!] scapy.arping failed ({exc}); falling back to srp.")
-        arp = scapy.ARP(pdst=str(net))
-        ether = scapy.Ether(dst="ff:ff:ff:ff:ff:ff")
-        packet = ether/arp
-        answered = scapy.srp(packet, timeout=timeout, verbose=False)[0]
-
-    hosts = []
-    for sent, recv in answered:
-        ip = recv.psrc
-        mac = format_mac(recv.hwsrc)
+        # try fallback srp method
+        if verbose:
+            print(f"[!] scapy.arping failed ({exc}); falling back to srp.")
         try:
-            hostname = socket.gethostbyaddr(ip)[0]
-        except Exception:
-            hostname = ip
-        hosts.append({"ip": ip, "mac": mac, "hostname": hostname})
+            arp = scapy.ARP(pdst=str(net))
+            ether = scapy.Ether(dst="ff:ff:ff:ff:ff:ff")
+            packet = ether/arp
+            srp_res = scapy.srp(packet, timeout=timeout, verbose=False)
+            # srp returns (answered, unanswered)
+            if isinstance(srp_res, tuple) and len(srp_res) >= 1:
+                answered = srp_res[0]
+            else:
+                answered = srp_res
+        except Exception as exc2:
+            if verbose:
+                print(f"[!] srp fallback also failed: {exc2}")
+            return []
+
+    hosts: List[dict] = []
+    for item in answered:
+        try:
+            # item may be a (sent, recv) tuple or scapy Packet/AnswerRow
+            if isinstance(item, tuple) and len(item) >= 2:
+                sent, recv = item[0], item[1]
+            else:
+                # attempt to treat item as a scapy packet with .psrc/.hwsrc
+                recv = item
+            ip = getattr(recv, "psrc", None) or getattr(recv, "fields", {}).get("psrc") or None
+            mac = getattr(recv, "hwsrc", None) or getattr(recv, "fields", {}).get("hwsrc") or None
+
+            if not ip or not mac:
+                # try alternative attribute names (some scapy variants)
+                # if we can't recover, skip this record but show debug if verbose
+                if verbose:
+                    print(f"[!] Could not extract ip/mac from reply: {repr(recv)}")
+                continue
+
+            ip = str(ip)
+            mac = format_mac(str(mac))
+
+            try:
+                hostname = socket.gethostbyaddr(ip)[0]
+            except Exception:
+                hostname = ip
+
+            hosts.append({"ip": ip, "mac": mac, "hostname": hostname})
+        except Exception as e:
+            # never crash on one bad packet; print details if verbose
+            if verbose:
+                print(f"[!] Exception while processing ARP reply: {e}; packet: {repr(item)}")
+            continue
+
+    print(f"[+] {len(hosts)} hosts discovered.")
+    sys.stdout.flush()
     return hosts
+
 
 # -----------------------
 # MAC vendor lookup + labeling

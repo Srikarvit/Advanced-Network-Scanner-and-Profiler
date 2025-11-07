@@ -1,0 +1,3 @@
+IP,MAC,Hostname,Vendor,Label,OS,Open Ports (port:banner/product/version)
+10.220.68.20,14:D4:24:A2:83:E3,Srikar,Dell / Realtek (likely laptop/PC),This PC,Microsoft Windows 10 1607,139:Microsoft Windows netbios-ssn/; 445:/
+10.220.68.57,2E:46:C9:92:03:02,10.220.68.57,Unknown,Unknown Device,Android 10 (Linux 4.14),53:dnsmasq/2.51

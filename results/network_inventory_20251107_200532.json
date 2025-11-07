@@ -1,0 +1,43 @@
+[
+  {
+    "ip": "10.220.68.20",
+    "mac": "14:D4:24:A2:83:E3",
+    "hostname": "Srikar",
+    "vendor": "Dell / Realtek (likely laptop/PC)",
+    "label": "This PC",
+    "os": "Microsoft Windows 10 1607",
+    "open_ports": [
+      {
+        "port": 139,
+        "name": "netbios-ssn",
+        "product": "Microsoft Windows netbios-ssn",
+        "version": "",
+        "extrainfo": ""
+      },
+      {
+        "port": 445,
+        "name": "microsoft-ds",
+        "product": "",
+        "version": "",
+        "extrainfo": ""
+      }
+    ]
+  },
+  {
+    "ip": "10.220.68.57",
+    "mac": "2E:46:C9:92:03:02",
+    "hostname": "10.220.68.57",
+    "vendor": "Unknown",
+    "label": "Unknown Device",
+    "os": "Android 10 (Linux 4.14)",
+    "open_ports": [
+      {
+        "port": 53,
+        "name": "domain",
+        "product": "dnsmasq",
+        "version": "2.51",
+        "extrainfo": ""
+      }
+    ]
+  }
+]

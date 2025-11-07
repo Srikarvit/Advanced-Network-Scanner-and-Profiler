@@ -1,5 +1,5 @@
 scapy
 psutil
 requests
-python-nmap (If you prefer not to require python-nmap, remove it — script falls back to socket scanning)
+python-nmap  #(If you prefer not to require python-nmap, remove it — script falls back to socket scanning)
 
